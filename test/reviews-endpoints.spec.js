@@ -1,5 +1,6 @@
 /* eslint-disable quotes */
 const knex = require("knex");
+
 const app = require("../src/app");
 const helpers = require("./test-helpers");
 
@@ -36,7 +37,7 @@ describe("Reviews Endpoints", function() {
         .set("Authorization", helpers.makeAuthHeader(userInvalidPass))
         .expect(401, { error: "Unauthorized request" });
     });
-    it(`creates an review, responding with 201 and the new review`, function() {
+    it(`creates a review, responding with 201 and the new review`, function() {
       this.retries(3);
       const testThing = testThings[0];
       const testUser = testUsers[0];
