@@ -6,7 +6,7 @@ const helpers = require("./test-helpers");
 
 describe("Protected Endpoints", function() {
   let db;
-
+  this.timeout(5000);
   const { testUsers, testThings, testReviews } = helpers.makeThingsFixtures();
 
   before("make knex instance", () => {

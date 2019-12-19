@@ -1,3 +1,5 @@
+const bcrypt = require("bcryptjs");
+
 function makeUsersArray() {
   return [
     {
@@ -221,28 +223,59 @@ function makeThingsFixtures() {
 }
 
 function cleanTables(db) {
-  return db.raw(
-    `TRUNCATE
+  return db.transaction(trx =>
+    trx
+      .raw(
+        `TRUNCATE
       thingful_things,
       thingful_users,
       thingful_reviews
-      RESTART IDENTITY CASCADE`
+    `
+      )
+      .then(() =>
+        Promise.all([
+          trx.raw(`SELECT setval('thingful_things_id_seq', 1)`),
+          trx.raw(`SELECT setval('thingful_users_id_seq', 1)`),
+          trx.raw(`SELECT setval('thingful_reviews_id_seq', 1)`)
+        ])
+      )
   );
 }
 
-function seedThingsTables(db, users, things, reviews = []) {
+function seedUsers(db, users) {
+  const preppedUsers = users.map(user => ({
+    ...user,
+    password: bcrypt.hashSync(user.password, 1)
+  }));
   return db
     .into("thingful_users")
-    .insert(users)
-    .then(() => db.into("thingful_things").insert(things))
-    .then(() => reviews.length && db.into("thingful_reviews").insert(reviews));
+    .insert(preppedUsers)
+    .then(() =>
+      db.raw(`SELECT setval('thingful_users_id_seq', ?)`, [
+        users[users.length - 1].id
+      ])
+    );
+}
+function seedThingsTables(db, users, things, reviews = []) {
+  return db.transaction(async trx => {
+    await seedUsers(trx, users);
+    await trx.into("thingful_things").insert(things);
+    await trx.raw(`SELECT setval('thingful_things_id_seq', ?)`, [
+      things[things.length - 1].id
+    ]);
+    if (reviews.length) {
+      await trx.into("thingful_reviews").insert(reviews);
+      await trx.raw(`SELECT setval('thingful_reviews_id_seq', ?)`, [
+        reviews[reviews.length - 1].id
+      ]);
+    }
+  });
 }
 
 function seedMaliciousThing(db, user, thing) {
-  return db
-    .into("thingful_users")
-    .insert([user])
-    .then(() => db.into("thingful_things").insert([thing]));
+  return seedUsers(db, [user]).then(() =>
+    db.into("thingful_things").insert([thing])
+  );
 }
 
 function makeAuthHeader(user) {
@@ -262,6 +295,7 @@ module.exports = {
 
   makeThingsFixtures,
   cleanTables,
+  seedUsers,
   seedThingsTables,
   seedMaliciousThing,
   makeAuthHeader
