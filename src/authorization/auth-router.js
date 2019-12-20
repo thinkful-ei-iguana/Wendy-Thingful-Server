@@ -1,7 +1,6 @@
 /* eslint-disable quotes */
 const express = require("express");
 const AuthService = require("./auth-service");
-const { requireAuth } = require("../middleware/basic-auth");
 
 const authRouter = express.Router();
 const jsonParser = express.json();
